@@ -1,0 +1,192 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import requests, json, sys, os, urllib, csv, datetime
+from shutil import copyfile
+
+# Set up utf-8 writing
+reload(sys)  
+sys.setdefaultencoding('utf8')
+
+def extractMessages(groupID):
+  global token
+
+  # Downloads all of the messages
+  baseURL = 'https://api.groupme.com/v3/groups/' + groupID + '/messages?token=' + token + '&limit=100'
+
+  initial = json.loads(requests.get(baseURL).text)['response']
+  allMessages = initial['messages']
+  totalCount = initial['count']
+
+  current = len(allMessages)
+  while (current < totalCount):
+    lastID = allMessages[-1]['id']
+    nextMessages = json.loads(requests.get(baseURL + '&before_id=' + lastID).text)['response']['messages']
+    allMessages += nextMessages
+    current = len(allMessages)
+
+  return allMessages
+
+def saveMessagesFormatted(base, messages):
+  with open(base + '/home.html', 'wb') as f:
+    f.write(
+      '<html><head>' + 
+      '<link rel="stylesheet" type="text/css" href="main.css">'
+      '<title>Yeah!</title>' + 
+      '</head><body><div class="messages">'
+    )
+
+    prevTime = 0
+    prevAuthor = ''
+    for message in messages[::-1]:
+      # Put in time message if over 5 hours later
+      if (message['created_at'] - prevTime > 18000):
+        currTime = datetime.datetime.fromtimestamp(message['created_at'])
+        f.write(
+          '<div class="time">' +
+          '{dt:%b} {dt.day}, {dt.year} {hr}:{dt:%M} {dt:%p}'.format(dt=currTime, hr=currTime.hour % 12) +
+          '</div>'
+        )
+      content = ''
+      if (message['text']):
+        content += '<div class="text">' + str(message['text']).replace('\n', '<br>') + '</div>'
+      if (len(message['attachments']) > 0):
+        for i in xrange(0, len(message['attachments'])):
+          # Image
+          if message['attachments'][i]['type'] == 'image' or message['attachments'][i]['type'] == 'linked_image':
+            content += '<img class="attachment" src="./assets/messages/' + message['id'] + '_' + str(i) + '.' + message['attachments'][i]['url'].split('.')[-2] + '">'
+          # Video
+          elif message['attachments'][i]['type'] == 'video':
+            content += ('<video controls>' +
+              '<source src="./assets/messages/' + message['id'] + '_' + str(i) + '.' + message['attachments'][i]['url'].split('.')[-1] + '" type="video/mp4">' +
+              'Your browser does not support the video tag. </video>')
+      # Author
+      typeClass = 'user'
+      author = ''
+      if (message['user_id'] == 'system'):
+        typeClass = 'system'
+      # Put in a header if the author changes, or if the message is over 5 hours later
+      elif (prevAuthor != message['user_id'] or message['created_at'] - prevTime > 18000):
+        # Check if .png or .jpeg
+        if os.path.isfile(base + '/assets/members/' + message['user_id'] + '.jpeg'): 
+          author = '<div class="author"><img src="./assets/members/' + message['user_id'] + '.jpeg"><span class="name">' + message['name'] + '</span></div>'
+        elif os.path.isfile(base + '/assets/members/' + message['user_id'] + '.png'):
+          author = '<div class="author"><img src="./assets/members/' + message['user_id'] + '.png"><span class="name">' + message['name'] + '</span></div>'
+        else:
+          name = message['name'].split(' ')
+          if (len(name) == 1):
+            name = name[0][0]
+          elif (len(name) >= 2):
+            name = name[0][0] + name[1][0]
+          author = '<div class="author"><div class="fake-icon">' + name + '</div><span class="name">' + message['name'] + '</span></div>'
+      # Likes
+      likes = ''
+      if (len(message['favorited_by']) > 0):
+        likes += '<span class="liked">♥</span><span>' + str(len(message['favorited_by'])) + '</span>'
+      else:
+        likes += '<span class="unliked">♡</span>'
+
+      f.write(
+        '<div class="' + typeClass + '" title="' + 
+          datetime.datetime.fromtimestamp(message['created_at']).strftime('%Y-%m-%d %H:%M:%S') +
+        '">' + 
+        '<div class="header">' + author + '</div>' +
+        '<div class="body">' + 
+          '<div class="content">' + content + '</div>' + 
+          '<div class="gutter"><div class="likes">' + likes + '</div></div>' + 
+        '</div>' + 
+        '</div>'
+      )
+
+      # Update
+      prevTime = message['created_at']
+      prevAuthor = message['user_id']
+    f.write('</div></body></html>')
+
+token = raw_input('Please paste your access token: ')
+token = token.strip()
+
+print "Getting a list of groups..."
+
+groupRequest = requests.get('https://api.groupme.com/v3/groups?per_page=20&token=' + token)
+rawGroups = json.loads(groupRequest.text)
+
+groups = []
+for group in rawGroups['response']:
+  groups.append({
+    'id': group['id'],
+    'name': group['name'],
+    'updated_at': group['updated_at'],
+    'members': group['members'],
+    'messages': group['messages']['count']
+  })
+
+for i in xrange(1, len(groups)+1):
+  print str(i) + ": " + str(groups[i-1]['name']) + " (" + str(groups[i-1]['messages']) + " messages)"
+
+group = raw_input("Which group should be downloaded? ")
+
+try:
+  i = int(group)
+  if (i < 1 or i > len(groups)):
+    print "Invalid group"
+    sys.exit()
+  else:
+    print "\nChosen (" + group + "): " + groups[i-1]['name']
+    # Download all for that group
+    toDownload = groups[i-1]['id']
+
+    print 'Downloading all messages...'
+
+    messages = extractMessages(toDownload)
+    members = groups[i-1]['members']
+
+    base = './' + str(toDownload)
+
+    print 'Setting up folders...'
+
+    # Make the directory setup
+    os.makedirs(base)
+    os.makedirs(base + '/assets')
+    os.makedirs(base + '/assets/messages')
+    os.makedirs(base + '/assets/members')
+    copyfile('./main.css', base + '/main.css')
+
+    print 'Downloading attachments...'
+
+    # Download every attachment image
+    for message in messages:
+      for i in xrange(0, len(message['attachments'])):
+        if message['attachments'][i]['type'] == 'image' or message['attachments'][i]['type'] == 'linked_image':
+          url = message['attachments'][i]['url']
+          urllib.urlretrieve(url, base + '/assets/messages/' + message['id'] + '_' + str(i) + '.' + url.split('.')[-2])
+        elif message['attachments'][i]['type'] == 'video':
+          url = message['attachments'][i]['url']
+          urllib.urlretrieve(url, base + '/assets/messages/' + message['id'] + '_' + str(i) + '.' + url.split('.')[-1])
+
+    print 'Downloading member icons...'
+
+    # Download every member image
+    for member in members:
+      url = member['image_url']
+      if url != None:
+        urllib.urlretrieve(url, base + '/assets/members/' + member['user_id'] + '.' + url.split('.')[-2])
+
+    print 'Saving messages to viewer file...'
+
+    # Save messages in a satisfying way
+    saveMessagesFormatted(base, messages)
+
+    # Download every message into a CSV
+    all_keys = set().union(*(d.keys() for d in messages))
+    with open(base + '/messages.csv', 'wb') as output:
+      dict_writer = csv.DictWriter(output, all_keys)
+      dict_writer.writeheader()
+      dict_writer.writerows(messages)
+
+    print 'Done!'
+
+except Exception as e:
+  print e
+  print "Whoops"
+  sys.exit()

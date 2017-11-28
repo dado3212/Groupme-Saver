@@ -1,0 +1,95 @@
+body {
+  font-family: "SegoeUI", sans-serif;
+  color: #3b3b3b;
+  background-color: #f7f7f7;
+  font-size: 15px;
+  line-height: 22px;
+}
+
+img {
+  max-width: 100px;
+  max-height: 300px;
+}
+
+.author img {
+  max-width: 30px;
+  max-height: 30px;
+
+  vertical-align: middle;
+}
+
+.author .name {
+  padding-left: 5px;
+
+  color: #626f82;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.messages {
+  max-width: 660px;
+  margin: 0 auto;
+}
+
+.content {
+  padding-left: 35px;
+  padding-right: 35px;
+  word-break: break-word;
+}
+
+.attachment {
+  max-width: 100%;
+  background: #FFF;
+  padding: 8px 10px;
+  margin-bottom: 3px;
+  border: 1px solid #e6e6e6;
+  border-radius: 4px;
+}
+
+.messages .system {
+  background-color: #f0f0f0;
+  padding: 6px 0;
+
+  color: #626f82;
+  font-size: 12px;
+}
+
+.messages .user {
+  padding-bottom: 5px;
+}
+
+.body {
+  position: relative;
+}
+
+.gutter {
+  width: 2.2em;
+  position: absolute;
+  right: 0px;
+  top: 0px;
+  font-size: 12px;
+}
+
+.author {
+  padding-top: 10px;
+}
+
+.time {
+  color: #626f82;
+  font-size: 11px;
+  font-weight: bold;
+  text-align: center;
+  text-transform: uppercase;
+  background-color: #f7f7f7;
+  padding: 6px 0 5px;
+}
+
+.fake-icon {
+  width: 30px;
+  height: 30px;
+  display: inline-block;
+  background-color: #626f82;
+  color: white;
+  text-align: center;
+  line-height: 30px;
+}
