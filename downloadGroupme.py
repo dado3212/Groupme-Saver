@@ -32,7 +32,7 @@ def saveMessagesFormatted(base, messages):
     f.write(
       '<html><head>' + 
       '<link rel="stylesheet" type="text/css" href="main.css">'
-      '<title>Yeah!</title>' + 
+      '<title>Saved Groupme</title>' + 
       '</head><body><div class="messages">'
     )
 
