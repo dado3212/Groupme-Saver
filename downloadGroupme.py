@@ -8,6 +8,18 @@ from shutil import copyfile
 reload(sys)  
 sys.setdefaultencoding('utf8')
 
+# Draws out a progress bar
+def drawProgressBar(percent, barLen = 20):
+  sys.stdout.write("\r")
+  progress = ""
+  for i in range(barLen):
+      if i < int(barLen * percent):
+          progress += "="
+      else:
+          progress += " "
+  sys.stdout.write("[%s] %.2f%%" % (progress, percent * 100))
+  sys.stdout.flush()
+
 def extractMessages(groupID):
   global token
 
@@ -21,9 +33,16 @@ def extractMessages(groupID):
   current = len(allMessages)
   while (current < totalCount):
     lastID = allMessages[-1]['id']
-    nextMessages = json.loads(requests.get(baseURL + '&before_id=' + lastID).text)['response']['messages']
-    allMessages += nextMessages
-    current = len(allMessages)
+
+    try:
+      nextMessages = json.loads(requests.get(baseURL + '&before_id=' + lastID).text)['response']['messages']
+      allMessages += nextMessages
+      current = len(allMessages)
+
+      drawProgressBar(float(current)/float(totalCount))
+    except Exception as e:
+      drawProgressBar(1.0)
+      return allMessages
 
   return allMessages
 
@@ -143,6 +162,7 @@ try:
 
     base = './' + str(toDownload)
 
+    print ''
     print 'Setting up folders...'
 
     # Make the directory setup
@@ -155,7 +175,9 @@ try:
     print 'Downloading attachments...'
 
     # Download every attachment image
-    for message in messages:
+    message_count = len(messages)
+    for j in xrange(0, message_count):
+      message = messages[j]
       for i in xrange(0, len(message['attachments'])):
         if message['attachments'][i]['type'] == 'image' or message['attachments'][i]['type'] == 'linked_image':
           url = message['attachments'][i]['url']
@@ -164,14 +186,23 @@ try:
           url = message['attachments'][i]['url']
           urllib.urlretrieve(url, base + '/assets/messages/' + message['id'] + '_' + str(i) + '.' + url.split('.')[-1])
 
+      drawProgressBar(float(j)/float(message_count))
+
+    drawProgressBar(1.0)
+    print ''
     print 'Downloading member icons...'
 
     # Download every member image
-    for member in members:
+    for i in xrange(0, len(members)):
+      member = members[i]
       url = member['image_url']
       if url != None:
         urllib.urlretrieve(url, base + '/assets/members/' + member['user_id'] + '.' + url.split('.')[-2])
 
+      drawProgressBar(float(i)/float(len(members)))
+
+    drawProgressBar(1.0)
+    print ''
     print 'Saving messages to viewer file...'
 
     # Save messages in a satisfying way
