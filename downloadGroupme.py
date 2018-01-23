@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import requests, json, sys, os, urllib, csv, datetime
+import requests, json, sys, os, urllib, csv, datetime, re
 from shutil import copyfile
 
 # Set up utf-8 writing
-reload(sys)  
+reload(sys)
 sys.setdefaultencoding('utf8')
 
 # Draws out a progress bar
@@ -27,7 +27,16 @@ def extractMessages(groupID):
   baseURL = 'https://api.groupme.com/v3/groups/' + groupID + '/messages?token=' + token + '&limit=100'
 
   initial = json.loads(requests.get(baseURL).text)['response']
-  allMessages = initial['messages']
+  allMessages = []
+  newMessages = initial['messages']
+  # Handle poll messages
+  for message in newMessages:
+    if 'event' in message and message['event']['type'] == 'poll.created':
+      data = json.loads(requests.get('https://api.groupme.com/v3/poll/' + groupID + '/' + message['event']['data']['poll']['id'] + '?token=' + token).text)['response']
+      message['poll_data'] = data
+      allMessages.append(message)
+    else:
+      allMessages.append(message)
   totalCount = initial['count']
 
   current = len(allMessages)
@@ -36,6 +45,15 @@ def extractMessages(groupID):
 
     try:
       nextMessages = json.loads(requests.get(baseURL + '&before_id=' + lastID).text)['response']['messages']
+      toAdd = []
+      for message in nextMessages:
+        if 'event' in message and message['event']['type'] == 'poll.created':
+          data = json.loads(requests.get('https://api.groupme.com/v3/poll/' + groupID + '/' + message['event']['data']['poll']['id'] + '?token=' + token).text)['response']
+          message['poll_data'] = data
+          toAdd.append(message)
+        else:
+          toAdd.append(message)
+
       allMessages += nextMessages
       current = len(allMessages)
 
@@ -67,7 +85,25 @@ def saveMessagesFormatted(base, messages):
           '</div>'
         )
       content = ''
-      if (message['text']):
+      if ('event' in message and message['event']['type'] == 'poll.created'):
+        content += '<div class="poll">' + str(message['event']['data']['poll']['subject']).replace('\n', '<br>')
+        total = 0
+        highest = 0
+        for option in message['poll_data']['poll']['data']['options']:
+          num = option['votes'] if 'votes' in option else 0
+          total += num
+          if num > highest:
+            highest = num
+        for option in message['poll_data']['poll']['data']['options']:
+          num = option['votes'] if 'votes' in option else 0
+          content += '<div class="option">'
+          if num == highest:
+            content += '<span class="background best" style="width: ' + str(float(num)/total * 100) + '%"></span>'
+          else:
+            content += '<span class="background" style="width: ' + str(float(num)/total * 100) + '%"></span>'
+          content += '<span class="title">' + str(option['title']) + '</span><span class="number">' + str(num) + '</span></div>'
+        content += '</div>'
+      elif (message['text']):
         content += '<div class="text">' + str(message['text']).replace('\n', '<br>') + '</div>'
       if (len(message['attachments']) > 0):
         for i in xrange(0, len(message['attachments'])):

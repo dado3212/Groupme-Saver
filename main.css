@@ -93,3 +93,40 @@ img {
   text-align: center;
   line-height: 30px;
 }
+
+.option {
+  background-color: white;
+  padding: 4px 4px 4px 10px;
+  margin: 1px 0;
+  position: relative;
+}
+
+.option .number {
+  float: right;
+  margin-right: 5px;
+  position: relative;
+  z-index: 2;
+}
+
+.option .background {
+  display: block;
+  background-color: #d5effe;
+  top: 0px;
+  bottom: 0px;
+  position: absolute;
+  left: 0px;
+  z-index: 0;
+}
+
+.option .background.best {
+  background-color: rgb(195, 242, 217);
+}
+
+.option .title {
+  position: relative;
+  z-index: 2;
+}
+
+.likes .liked {
+  margin-right: 2px;
+}
