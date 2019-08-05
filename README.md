@@ -10,7 +10,9 @@ It saves all of the images and videos locally, along with all of the icons for t
 It additionally saves all of the message information into a CSV file if you want a more detailed breakdown compared to the visuals.
 
 ## How To Run
-To run it, you will need to get your access token.  Go to https://dev.groupme.com and log in, and then in the top menu bar there will be an option for 'Access Token'.  Copy that, and when you run the python script with `python downloadGroupme.py` it will prompt you for the token.  Paste it in, and then type the number of the group you want to download and it will take care of the rest!
+1. You will need Requests installed: `pip install requests`.
+2. You will need to get your access token.  To get ths, go to https://dev.groupme.com and log in, and then in the top menu bar there will be an option for 'Access Token'.  Copy that code!
+3. Run the python script with `python downloadGroupme.py`.  It will prompt you for the token.  Paste it in, and then type the number of the group you want to download and it will take care of the rest!
 
 ---
 
